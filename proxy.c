@@ -17,7 +17,7 @@ void thread(int *arg) {
 
   char req[MAXLINE], host[MAXLINE], port[MAXLINE], res[MAXLINE];
 
-  request(res, host, client, req, port);
+  payload(res, host, client, req, port);
 
   server = Open_clientfd(host, port);
   Rio_writen(server, req, strlen(req));
@@ -38,11 +38,12 @@ void thread(int *arg) {
   return;
 }
 
-void request(char *res, char *host, int client, char *str, char *port) {
-   rio_t rio_client;
+void payload(char *res, char *host, int client, char *str, char *port) {
+  rio_t rio_client;
 
   Rio_readinitb(&rio_client, client);
-   char tmp[MAXLINE];
+
+  char tmp[MAXLINE];
   Rio_readlineb(&rio_client, tmp, MAXLINE);
 
   char url[MAXLINE], prot[MAXLINE], type[MAXLINE], port_host[MAXLINE],
@@ -75,7 +76,6 @@ void request(char *res, char *host, int client, char *str, char *port) {
 
   sprintf(getstr, "%s", user_agent_hdr);
   strcat(str, getstr);
-  printf("%s\n", str);
 
   while (Rio_readlineb(&rio_client, tmp, MAXLINE) > 0) {
     if (!strcmp(tmp, "\r\n")) {
@@ -92,7 +92,6 @@ void response(int server, int client) {
   rio_t rio_server;
   char temp[MAXLINE];
   unsigned int len = 0;
-  int valid_size = 1;
 
   Rio_readinitb(&rio_server, server);
 
@@ -109,6 +108,7 @@ int main(int argc, char *argv[]) {
 
   if (argc != 2) {
     printf("usage: ./proxy <port>\n");
+    exit(1);
   }
 
   servfd = Open_listenfd(argv[1]);

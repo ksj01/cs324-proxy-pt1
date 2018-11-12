@@ -9,31 +9,6 @@ static const char *user_agent_hdr =
     "User-Agent: Mozilla/5.0 (X11; Linux x86_64; rv:10.0.3) Gecko/20120305 "
     "Firefox/10.0.3\r\n";
 
-void thread(int *arg);
-int request(char *res, char *host, int client, char *str, char *port);
-int response(int server, int client, char *content);
-
-// DONE
-int main(int argc, char *argv[]) {
-  struct sockaddr_in client;
-  int len = sizeof(client);
-  int servfd;
-
-  if (argc != 2) {
-    printf("usage: ./proxy <port>\n");
-  }
-
-  servfd = Open_listenfd(argv[1]);
-  while (1) {
-    pthread_t tid;
-    int *connfdp = Malloc(sizeof(int));
-    *connfdp = -1;
-    *connfdp = Accept(servfd, (SA *)&client, (socklen_t *)&len);
-    Pthread_create(&tid, NULL, (void *)thread, (void *)connfdp);
-  }
-  return 0;
-}
-
 void thread(int *arg) {
   Pthread_detach(Pthread_self());
 
@@ -42,16 +17,11 @@ void thread(int *arg) {
 
   char req[MAXLINE], host[MAXLINE], port[MAXLINE], res[MAXLINE];
 
-  int val = request(res, host, client, req, port);
-
-  printf("%s:%s\n", host, port);
-  fflush(stdout);
-  fflush(stdout);
+  request(res, host, client, req, port);
 
   server = Open_clientfd(host, port);
   Rio_writen(server, req, strlen(req));
-  char payload[MAX_OBJECT_SIZE];
-  response(server, client, payload);
+  response(server, client);
 
   if (client) {
     if (client >= 0) {
@@ -68,15 +38,12 @@ void thread(int *arg) {
   return;
 }
 
-int request(char *res, char *host, int client, char *str, char *port) {
-  char tmp[MAXLINE];
-
-  rio_t rio_client;
+void request(char *res, char *host, int client, char *str, char *port) {
+   rio_t rio_client;
 
   Rio_readinitb(&rio_client, client);
-  if (Rio_readlineb(&rio_client, tmp, MAXLINE) == -1) {
-    return -1;
-  }
+   char tmp[MAXLINE];
+  Rio_readlineb(&rio_client, tmp, MAXLINE);
 
   char url[MAXLINE], prot[MAXLINE], type[MAXLINE], port_host[MAXLINE],
       vers[MAXLINE];
@@ -118,24 +85,39 @@ int request(char *res, char *host, int client, char *str, char *port) {
       strcat(str, tmp);
     }
   }
-
-  return 0;
 }
 
-int response(int server, int client, char *content) {
+void response(int server, int client) {
 
   rio_t rio_server;
   char temp[MAXLINE];
-  unsigned int size = 0, len = 0;
+  unsigned int len = 0;
   int valid_size = 1;
-
-  content[0] = '\0';
 
   Rio_readinitb(&rio_server, server);
 
   while ((len = Rio_readnb(&rio_server, temp, MAXLINE)) > 0) {
     rio_writen(client, temp, len);
   }
+}
 
+// DONE
+int main(int argc, char *argv[]) {
+  struct sockaddr_in client;
+  int len = sizeof(client);
+  int servfd;
+
+  if (argc != 2) {
+    printf("usage: ./proxy <port>\n");
+  }
+
+  servfd = Open_listenfd(argv[1]);
+  while (1) {
+    pthread_t tid;
+    int *connfdp = Malloc(sizeof(int));
+    *connfdp = -1;
+    *connfdp = Accept(servfd, (SA *)&client, (socklen_t *)&len);
+    Pthread_create(&tid, NULL, (void *)thread, (void *)connfdp);
+  }
   return 0;
 }
